@@ -6,7 +6,8 @@ from pithon.syntax import (
     PiFunctionDef, PiAttributeAssignment, PiFunctionCall, PiFor, PiBreak, PiContinue, PiIn, PiReturn
 )
 from pithon.evaluator.envvalue import EnvValue, VFunctionClosure, VList, VNone, VTuple, VNumber, VBool, VString, VClassDef, VObject
-
+from pithon.exceptions import (PithonNameError, PithonError, PithonSyntaxError, PithonAttributeError, PithonBreakError, PithonCallError, 
+     PithonIndexError, PithonTypeError, PithonValueError, PithonZeroSivisionError)
 
 def initial_env() -> EnvFrame:
     """Crée et retourne l'environnement initial avec les primitives."""
@@ -30,10 +31,9 @@ def lookup(env: EnvFrame, name: str) -> EnvValue:
             from difflib import get_close_matches
             suggestions = get_close_matches(name, available_vars, n=3, cutoff=0.6)
             if suggestions: 
-                raise NameError(f"Variable '{name}' non définie. "
-                                f"Vouliez-vous dire : {', '.join(suggestions)} ?")
+                raise PithonNameError(name, suggestions)
         
-        raise NameError(f"Variable '{name}' non définie.")
+        raise PithonNameError(f"Variable '{name}' non définie.")
 
 def validate_function_call(funcdef: PiFunctionDef, args: list[EnvValue]):
     """Valide les arguments d'un appel de fonction"""
@@ -41,11 +41,11 @@ def validate_function_call(funcdef: PiFunctionDef, args: list[EnvValue]):
     max_args = min_args if not funcdef.vararg else float('inf')
 
     if len(args) < min_args: 
-        raise TypeError(f"La fonction '{funcdef.name}' attend au moins {min_args} argument(s), "
+        raise PithonCallError(f"La fonction '{funcdef.name}' attend au moins {min_args} argument(s), "
                         f"{len(args)} fourni(s)")
     
     if len(args) > max_args: 
-        raise TypeError(f"La fonction '{funcdef.name}' attend au maximum {min_args} argument(s), "
+        raise PithonCallError(f"La fonction '{funcdef.name}' attend au maximum {min_args} argument(s), "
                         f"{len(args)} fourni(s)")
 
 
@@ -64,7 +64,7 @@ def evaluate(node: PiProgram, env: EnvFrame) -> EnvValue:
     elif isinstance(node, PiStatement):
         return evaluate_stmt(node, env)
     else:
-        raise TypeError(f"Type de nœud non supporté : {type(node)}")
+        raise PithonTypeError(f"Type de nœud non supporté : {type(node)}")
 
 def evaluate_stmt(node: PiStatement, env: EnvFrame) -> EnvValue:
     """Évalue une instruction ou expression Pithon."""
@@ -167,13 +167,13 @@ def evaluate_stmt(node: PiStatement, env: EnvFrame) -> EnvValue:
                 if i < len(all_args):
                     call_env.insert(arg_name, all_args[i])
                 else:
-                    raise TypeError(f"Argument manquant pour la methode '{funcdef.name}'")
+                    raise PithonTypeError(f"Argument manquant pour la methode '{funcdef.name}'")
             # Gérer les arguments variables si nécessaire
             if funcdef.vararg:
                 varargs = VList(all_args[len(funcdef.arg_names):])
                 call_env.insert(funcdef.vararg, varargs)
             elif len(all_args) > len(funcdef.arg_names):
-                raise TypeError(f"Trop d'arguments pour la methode '{funcdef.name}'")
+                raise PithonTypeError(f"Trop d'arguments pour la methode '{funcdef.name}'")
             
             result = VNone(value=None)
             try:
@@ -193,13 +193,13 @@ def evaluate_stmt(node: PiStatement, env: EnvFrame) -> EnvValue:
                 if i < len(args):
                     call_env.insert(arg_name, args[i])
                 else:
-                    raise TypeError(f"Argument manquant pour la fonction '{funcdef.name}'")
+                    raise PithonTypeError(f"Argument manquant pour la fonction '{funcdef.name}'")
             # Gérer les arguments variables
             if funcdef.vararg:
                 varargs = VList(args[len(funcdef.arg_names):])
                 call_env.insert(funcdef.vararg, varargs)
             elif len(args) > len(funcdef.arg_names):
-                raise TypeError(f"Trop d'arguments pour la fonction '{funcdef.name}'")
+                raise PithonTypeError(f"Trop d'arguments pour la fonction '{funcdef.name}'")
             
             result = VNone(value=None)
             try:
@@ -225,13 +225,13 @@ def evaluate_stmt(node: PiStatement, env: EnvFrame) -> EnvValue:
                     if i < len(init_args):
                         call_env.insert(arg_name, init_args[i])
                     else: 
-                        raise TypeError(f"Argument manquant pour le constructeur de '{func_val.name}'")
+                        raise PithonTypeError(f"Argument manquant pour le constructeur de '{func_val.name}'")
                 
                 if funcdef.vararg:
                     varargs = VList(init_args[len(funcdef.arg_names):])
                     call_env.insert(funcdef.vararg, varargs)
                 elif len(init_args) > len(funcdef.arg_names):
-                    raise TypeError(f"Trop d'arguments pour le constructeur de '{func_val.name}'")
+                    raise PithonTypeError(f"Trop d'arguments pour le constructeur de '{func_val.name}'")
                 
                 try:
                     for stmt in funcdef.body:
@@ -241,7 +241,7 @@ def evaluate_stmt(node: PiStatement, env: EnvFrame) -> EnvValue:
 
             return instance
         
-        raise TypeError("Tentative d'appel d'un objet non-fonction.")
+        raise PithonTypeError("Tentative d'appel d'un objet non-fonction.")
 
     elif isinstance(node, PiFor):
         return _evaluate_for(node, env)
@@ -272,21 +272,27 @@ def evaluate_stmt(node: PiStatement, env: EnvFrame) -> EnvValue:
         return VNone(value=None)
 
     elif isinstance(node, PiAttribute):
-        obj = evaluate_stmt(node.object, env)
-        
-        if isinstance(obj, VObject):
-            # Chercher d'abord dans les attributs de l'instance
-            if node.attr in obj.attributes:
-                return obj.attributes[node.attr]
-            # puis dans les méthodes de la classe
-            elif node.attr in obj.class_def.methods:
-                # retourner une méthode liée (bound method)
-                method = obj.class_def.methods[node.attr]
-                return BoundMethod(method, obj)
+        try:
+            obj = evaluate_stmt(node.object, env)
+            
+            if isinstance(obj, VObject):
+                # Chercher d'abord dans les attributs de l'instance
+                if node.attr in obj.attributes:
+                    return obj.attributes[node.attr]
+                # puis dans les méthodes de la classe
+                elif node.attr in obj.class_def.methods:
+                    # retourner une méthode liée (bound method)
+                    method = obj.class_def.methods[node.attr]
+                    return BoundMethod(method, obj)
+                else:
+                    raise PithonAttributeError(f"L'objet '{obj.class_def.name}' n'a pas d'attribut '{node.attr}'")
             else:
-                raise AttributeError(f"L'objet '{obj.class_def.name}' n'a pas d'attribut '{node.attr}'")
-        else:
-            raise TypeError(f"'{type(obj).__name__}' n'a pas d'attributs")
+                type_name = type(obj).__name__.replace('V', '').lower()
+                raise PithonTypeError("objet", type_name, "accès attribut")
+        except (PithonAttributeError, PithonTypeError):
+            raise
+        except Exception as e:
+            raise PithonError(f"Erreur lors de l'accès à l'attribut: {str(e)}")
     
     elif isinstance(node, PiAttributeAssignment):
         obj = evaluate_stmt(node.object, env)
@@ -296,16 +302,16 @@ def evaluate_stmt(node: PiStatement, env: EnvFrame) -> EnvValue:
             obj.attributes[node.attr] = value
             return value
         else:
-            raise TypeError(f"Impossible d'assigner un attribut a '{type(obj).__name__}'")
+            raise PithonTypeError(f"Impossible d'assigner un attribut a '{type(obj).__name__}'")
     
     else:
-        raise TypeError(f"Type de nœud non supporté : {type(node)}")
+        raise PithonTypeError(f"Type de nœud non supporté : {type(node)}")
 
 
 def _check_valid_piandor_type(obj):
     """Vérifie que le type est valide pour 'and'/'or'."""
     if not isinstance(obj, (VBool, VNumber, VString, VNone, VList, VTuple)):
-        raise TypeError(f"Type non supporté pour l'opérateur 'and'/'or': {type(obj).__name__}")
+        raise PithonTypeError(f"Type non supporté pour l'opérateur 'and'/'or': {type(obj).__name__}")
 
 
 def _evaluate_while(node: PiWhile, env: EnvFrame) -> EnvValue:
@@ -329,7 +335,7 @@ def _evaluate_for(node: PiFor, env: EnvFrame) -> EnvValue:
     """Évalue une boucle for."""
     iterable_val = evaluate_stmt(node.iterable, env)
     if not isinstance(iterable_val, (VList, VTuple)):
-        raise TypeError("La boucle for attend une liste ou un tuple.")
+        raise PithonTypeError("La boucle for attend une liste ou un tuple.")
     last_value = VNone(value=None)
     iterable = iterable_val.value
     for item in iterable:
@@ -352,27 +358,28 @@ def _evaluate_subscript(node: PiSubscript, env: EnvFrame) -> EnvValue:
     if isinstance(collection, VList):
         idx = check_type(index, VNumber)
         idx_val = int(idx.value)
-        try:
-            return collection.value[idx_val]
-        except IndexError:
-            raise IndexError(f"Index {idx_val} hors limites pour une liste de taille {len(collection.value)}")
+        if idx_val < 0 or idx_val >= len(collection.value):
+            raise PithonIndexError(f"Index {idx_val} hors limites pour {len(collection.value)} liste")
+        return collection.value[idx_val]
+               
     elif isinstance(collection, VTuple):
         idx = check_type(index, VNumber)
         idx_val = int(idx.value)
         try:
             return collection.value[idx_val]
         except IndexError:
-            raise IndexError(f"Index {idx_val} hors limites pour un tuple de taille {len(collection.value)}")
+            raise PithonIndexError(f"Index {idx_val} hors limites pour un tuple de taille {len(collection.value)}")
+        
     elif isinstance(collection, VString):
         idx = check_type(index, VNumber)
         idx_val = int(idx.value)
         try:
             return VString(collection.value[idx_val])
         except IndexError:
-            raise IndexError(f"Index {idx_val} hors limites pour une chaine de longueur {len(collection.value)}")
+            raise PithonIndexError(f"Index {idx_val} hors limites pour une chaine de longueur {len(collection.value)}")
     else:
         type_name = type(collection).__name__.replace('V', '').lower()
-        raise TypeError(f"L'indexation n'est pas supportee pour le type '{type_name}'. "
+        raise PithonTypeError(f"L'indexation n'est pas supportee pour le type '{type_name}'. "
                         f"Types supportes: list, tuple, string")
 
 
@@ -388,7 +395,7 @@ def _evaluate_in(node: PiIn, env: EnvFrame) -> EnvValue:
         else:
             return VBool(False)
     else:
-        raise TypeError("'in' n'est supporté que pour les listes et chaînes.")
+        raise PithonTypeError("'in' n'est supporté que pour les listes et chaînes.")
 
 
 # Classes d'exception pour le contrôle de flux
