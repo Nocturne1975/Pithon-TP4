@@ -1,7 +1,14 @@
-import pytest
+import sys
 from pathlib import Path
 
-# Importation de la fonction à tester
+# Ajoute le dossier src/ au PYTHONPATH dynamiquement
+
+root_dir = Path(__file__).resolve().parents[2]  # remonte jusqu'à 2025H-420-910-MA-Pithon
+
+src_path = root_dir / "src"
+sys.path.insert(0, str(src_path))
+
+import pytest
 from pithon.cli import run_file
 
 def collect_test_cases():

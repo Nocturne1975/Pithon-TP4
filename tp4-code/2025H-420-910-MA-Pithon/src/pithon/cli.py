@@ -4,6 +4,8 @@ import os
 from pithon.evaluator.evaluator import initial_env, evaluate
 from pithon.parser.simpleparser import SimpleParser
 from pithon.syntax import PiAssignment
+from pithon.exceptions import (PithonError, PithonAttributeError, PithonBreakError, PithonCallError, PithonIndexError, PithonNameError, 
+     PithonSyntaxError, PithonTypeError, PithonValueError, PithonZeroDivisionError)
 
 def run_cli(ast_only=False):
     parser = SimpleParser()
@@ -30,17 +32,17 @@ def run_cli(ast_only=False):
         except KeyboardInterrupt:
             print("\nAu revoir 👋.")
             break
-        except SyntaxError as e:
+        except PithonSyntaxError as e:
             print(f"Erreur de syntaxe: {e}")
-        except NameError as e:
+        except PithonNameError as e:
             print(f"Erreur de nom: {e}")
-        except TypeError as e:
+        except PithonTypeError as e:
             print(f"Erreur de type: {e}")
-        except ValueError as e: 
+        except PithonValueError as e: 
             print(f"Erreur de valeur: {e}")
-        except ZeroDivisionError as e:
+        except PithonZeroDivisionError as e:
             print(f"Erreur de division: {e}")
-        except AttributeError as e: 
+        except PithonAttributeError as e: 
             print(f"Erreur d'attribut: {e}")
         except Exception as e:
             print(f"Erreur inattendue: {e}")

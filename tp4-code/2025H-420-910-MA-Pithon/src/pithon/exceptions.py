@@ -15,41 +15,50 @@ class PithonTypeError(PithonError):
     def __init__(self, expected, got, operation=None):
         msg = f"Type incorrect: attendu {expected}, reçu {got}"
         if operation:
-            msg += f" pour l'opération {operation}"
+            msg += f" pour l'opération '{operation}'"
         super().__init__(msg)
 
 class PithonNameError(PithonError):
     """Variable ou fonction non définie"""
-    def __init__(self, name):
-        super().__init__(f"Nom '{name}' n'est pas défini")
+    def __init__(self, message, suggestions=None):
+        if suggestions:
+            message += f". Suggestions: {', '.join(suggestions)}"
+        super().__init__(message)
 
 class PithonAttributeError(PithonError):
     """Attribut non trouvé"""
-    def __init__(self, obj_type, attr_name):
-        super().__init__(f"L'objet de type '{obj_type}' n'a pas d'attribut '{attr_name}'")
+    def __init__(self, message):
+        super().__init__(message)
 
 class PithonIndexError(PithonError):
     """Index hors limites"""
-    def __init__(self, index, length):
-        super().__init__(f"Index {index} hors limites pour une collection de taille {length}")
+    def __init__(self, message):
+        super().__init__(message)
 
-class PithonZeroSivisionError(PithonError):
-    """Division par zero"""
+class PithonZeroDivisionError(PithonError):
+    """Division par zéro"""
     def __init__(self):
-        super().__init__("Division par zero")
+        super().__init__("Division par zéro")
 
 class PithonValueError(PithonError):
-    """Valeur inappropriee"""
+    """Valeur inappropriée"""
     def __init__(self, message):
-        super().__init__("Valeur incorrecte:{message}")
+        super().__init__(f"Valeur incorrecte: {message}")
 
 class PithonCallError(PithonError):
     """Erreur lors d'un appel de fonction"""
-    def __init__(self, func_name, message):
-        super().__init__(f"Erreur lors de l'appel de '{func_name}' : {message}")
+    def __init__(self, message):
+        super().__init__(message)
 
 class PithonBreakError(PithonError):
     """Break en dehors d'une boucle"""
     def __init__(self):
-        super().__init__("'continue' en dehors d'une boucle")
-        
+        super().__init__("'break' en dehors d'une boucle")
+
+class PithonContinueError(PithonError):
+    """Continue en dehors d'une boucle"""
+    def __init__(self):
+        super().__init__("'continue' en dehors d'une boucle") 
+class Student:
+    def greet(self):
+        print("Hi, I'm", self.name, "from", self.school)

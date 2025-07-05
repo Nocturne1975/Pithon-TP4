@@ -83,15 +83,6 @@ class PiFor:
     var: str
     iterable: 'PiExpression'
     body: list['PiStatement']
-
-@dataclass
-class BoundMethod:
-    method: 'FunctionClosure'
-    instance: 'VObject'
-
-    def __repr__(self):
-        return f"<bound method {self.method.funcdef.name} of {self.instance}>"
-    
 @dataclass
 class PiBreak:
     pass
@@ -118,12 +109,13 @@ class PiSubscript:
 class PiClassDef:
     name: str
     methods: list['PiFunctionDef']
+    line: int | None = None #Pour les erreurs de syntaxe
 
 @dataclass
 class PiAttribute:
     object: 'PiExpression'
     attr: str
-
+    line: int | None = None
 @dataclass
 class PiAttributeAssignment:
     object: 'PiExpression'

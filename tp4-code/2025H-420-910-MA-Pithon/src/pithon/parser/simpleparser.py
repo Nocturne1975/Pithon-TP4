@@ -202,6 +202,10 @@ class SimpleParser(ast.NodeVisitor):
             return '>='
         elif isinstance(op, ast.In):
             return 'in'
+        elif isinstance(op, ast.FloorDiv):
+            return '//'
+        elif isinstance(op, ast.Mod):
+            return '%'
         else:
             raise ValueError(f"Opérateur non pris en charge {op}.")
 

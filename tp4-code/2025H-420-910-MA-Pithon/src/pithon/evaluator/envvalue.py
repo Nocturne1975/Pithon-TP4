@@ -16,7 +16,6 @@ class VFunctionClosure:
 
     def __str__(self) -> str:
         return f"<function {self.funcdef.name} at {id(self)}>"
-
 @dataclass
 class VList:
     """Représente une liste de valeurs."""
