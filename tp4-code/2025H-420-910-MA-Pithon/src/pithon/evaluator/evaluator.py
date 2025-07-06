@@ -303,19 +303,7 @@ def evaluate_stmt(node: PiStatement, env: EnvFrame) -> EnvValue:
         else:
             type_name = type(obj).__name__.replace('V', '').lower()
             raise PithonTypeError("objet", type_name, "assignation d'attribut")
-        
-    elif isinstance(node, PiAttributeAssignment):
-        obj = evaluate_stmt(node.object, env)
-        value = evaluate_stmt(node.value, env)
-        if not isinstance(obj, VObject):
-            raise PithonTypeError("objet", type(obj).__name__, "attribution d'attribut")
-        obj.fields[node.attr] = value
-        return value
-
-    else:
-        raise PithonTypeError("nœud supporté", type(node).__name__)
-
-
+    
 def _check_valid_piandor_type(obj):
     """Vérifie que le type est valide pour 'and'/'or'."""
     if not isinstance(obj, (VBool, VNumber, VString, VNone, VList, VTuple)):

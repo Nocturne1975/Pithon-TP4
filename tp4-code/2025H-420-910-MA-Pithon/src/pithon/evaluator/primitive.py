@@ -312,8 +312,8 @@ def primitive_range(args: list[EnvValue]) -> EnvValue:
         end = int(args[0].value)
         return VList([VNumber(i) for i in range(end)])
     else: 
-        start = int(arg[0].value)
-        end = int(args[1].valut)
+        start = int(args[0].value)
+        end = int(args[1].value)
         return VList([VNumber(i) for i in range(start, end)])
 
 def primitive_tuple(args: list[EnvValue]) -> EnvValue:
