@@ -160,7 +160,7 @@ def evaluate_stmt(node: PiStatement, env: EnvFrame) -> EnvValue:
             closure_env = func_val.function.closure_env
             
             call_env = EnvFrame(parent=closure_env)
-            # Ajouter 'self' comme premier argument
+           # Ajouter self dans l'environnement
             all_args = [func_val.instance] + args
             # Assigner les arguments
             for i, arg_name in enumerate(funcdef.arg_names):
